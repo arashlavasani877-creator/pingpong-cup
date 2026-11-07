@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The tournament ID is the Firebase Auth UID of its owner.
+    function owner(ownerId) {
+      return request.auth != null && request.auth.uid == ownerId;
+    }
+    function validState(st) {
+      return st == null || (
+        st is map &&
+        st.keys().hasAll(['version','title','players','slots','results','history']) &&
+        st.version == 2 &&
+        st.title is string && st.title.size() <= 80 &&
+        st.players is list && st.players.size() >= 2 && st.players.size() <= 64 &&
+        st.slots is list && st.slots.size() <= 64 &&
+        st.results is map &&
+        st.history is list && st.history.size() <= 127
+      );
+    }
+    function validDocument() {
+      return request.resource.data.keys().hasOnly(['state','revision','createdAt','updatedAt']) &&
+        request.resource.data.keys().hasAll(['state','revision','createdAt','updatedAt']) &&
+        validState(request.resource.data.state) &&
+        request.resource.data.revision is int &&
+        request.resource.data.revision > 0 &&
+        request.resource.data.updatedAt == request.time;
+    }
+    match /tournaments/{ownerId} {
+      // One known link is readable. Enumerating all tournaments is forbidden.
+      allow get: if true;
+      allow list: if false;
+      allow create: if owner(ownerId) && validDocument() &&
+        request.resource.data.revision == 1 &&
+        request.resource.data.createdAt == request.time;
+      allow update: if owner(ownerId) && validDocument() &&
+        request.resource.data.revision == resource.data.revision + 1 &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
