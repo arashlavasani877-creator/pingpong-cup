@@ -1,7 +1,7 @@
-// Only PUBLIC Firebase web-app configuration belongs here. Never paste service-account keys or passwords.
+// Firebase web app configuration — PingPong Cup (separate from Afrachoob)
 export const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME",
-  projectId: "REPLACE_ME",
-  appId: "REPLACE_ME"
+  apiKey: "AIzaSyBI9nGcZ2Ii8UIdqoszVAkdJLn5yOMHAdo",
+  authDomain: "pingpong-cup.firebaseapp.com",
+  projectId: "pingpong-cup",
+  appId: "1:482254252786:web:9eb0c54c6051271d64fe6b"
 };
