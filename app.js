@@ -15,6 +15,7 @@ let isManager=false,roomId=new URLSearchParams(location.search).get('room');
 if(roomId && !/^[a-zA-Z0-9]{1,128}$/.test(roomId))roomId=null;
 let revision=0,receivedRemote=false,serverOnline=false,saving=false;
 let rooms=[],managers=[],requests=[],publicRooms=[],loginExpanded=false;
+let deletingRoomId=null;
 const canManage=()=>Boolean(user&&isManager);
 const isOwner=()=>Boolean(user&&ownerReady&&user.uid===ownerUid);
 function notify(message){$('toast').textContent=message;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),4000)}
@@ -64,7 +65,7 @@ $('publicRooms').onclick=e=>{
 $('showLogin').onclick=()=>{loginExpanded=!loginExpanded;managementButtons()};
 function renderManagement(){
  if(!canManage())return;
- $('roomList').innerHTML=rooms.length ? rooms.map(r=>'<div class="room-row"><div class="row-details"><strong>'+esc(r.title)+'</strong><small>'+fa(r.count)+' بازیکن · '+esc(r.id)+'</small></div><button data-room="'+esc(r.id)+'">باز کردن</button></div>').join(''):'<p class="muted">هنوز مسابقه‌ای ساخته نشده است.</p>';
+ $('roomList').innerHTML=rooms.length ? rooms.map(r=>'<div class="room-row"><div class="row-details"><strong>'+esc(r.title)+'</strong><small>'+fa(r.count)+' بازیکن · '+esc(r.id)+'</small></div><div class="room-actions"><button type="button" data-room="'+esc(r.id)+'">باز کردن</button><button type="button" class="action-danger" data-delete-room="'+esc(r.id)+'" '+(deletingRoomId===r.id?'disabled':'')+'>حذف مسابقه</button></div></div>').join(''):'<p class="muted">هنوز مسابقه‌ای ساخته نشده است.</p>';
  $('requestsList').innerHTML=requests.length ? requests.map(x=>'<div class="request-row"><div class="row-details"><strong>'+esc(x.email)+'</strong><small>شناسه '+esc(x.uid)+'</small></div><button class="primary" data-approve="'+esc(x.uid)+'">تأیید</button><button data-deny="'+esc(x.uid)+'">رد</button></div>').join(''):'<p class="muted">درخواست جدیدی وجود ندارد.</p>';
  $('managersList').innerHTML='<div class="manager-row"><div class="row-details"><strong>مدیر ثابت (مالک)</strong><small>'+esc(ownerReady?ownerUid:'UID هنوز تنظیم نشده')+'</small></div><span id="managerBadge">محافظت‌شده</span></div>' +
  managers.filter(m=>m.uid!==ownerUid).map(m=>'<div class="manager-row"><div class="row-details"><strong>'+esc(m.email||m.uid)+'</strong><small>'+esc(m.uid)+'</small></div><button class="action-danger" data-revoke="'+esc(m.uid)+'">لغو مدیریت</button></div>').join('');
@@ -199,7 +200,47 @@ $('print').onclick=()=>window.print();
 $('export').onclick=()=>{if(!state)return;const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='PingPong_Double_Backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);notify('نسخه پشتیبان دانلود شد.')};
 $('import').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(!canManage())throw Error();if(f.size>100000)throw Error();const loaded=validate(JSON.parse(await f.text()));if(!confirm('این نسخه پشتیبان جایگزین جدول همین مسابقه شود؟'))return;if(roomId){if(await saveOnline(loaded))notify('مسابقه بازیابی شد.')}else await createTournament(loaded);}catch(err){notify('فایل معتبر نیست یا مجوز مدیریت نداری.')}finally{e.target.value=''}};
 $('share').onclick=async()=>{if(!canManage()||!roomId)return;const url=shareUrl();try{await navigator.clipboard.writeText(url);notify('لینک تماشاگران کپی شد.')}catch(_e){window.prompt('لینک تماشاگران:',url)}};
-$('roomList').onclick=e=>{const b=e.target.closest('[data-room]');if(b&&canManage())changeRoom(b.dataset.room)};
+// Only a signed-in manager can delete an individual tournament; Firestore rules also enforce this.
+// Never delete from the spectator view or delete a manager account here.
+async function deleteTournament(roomToDelete){
+ if(!canManage()||deletingRoomId)return;
+ const record=rooms.find(r=>r.id===roomToDelete);
+ if(!record){notify('مسابقه در فهرست وجود ندارد.');return}
+ const reference=doc(db,'tournaments',roomToDelete);
+ let lastRevision;
+ try{
+   const fresh=await getDocFromServer(reference);
+   if(!fresh.exists()){notify('این مسابقه قبلاً حذف شده است.');return}
+   lastRevision=fresh.data().revision;
+ }catch(err){console.error('read before deletion:',err);notify('برای حذف باید اتصال فعال به سرور برقرار باشد.');return}
+ const title=record.title;
+ if(!confirm('آیا می‌خواهید مسابقه «'+title+'» حذف شود؟\nنتایج و جدول همین مسابقه برای همیشه پاک می‌شوند.'))return;
+ const typed=prompt('برای تأیید نهایی، نام مسابقه را دقیقاً بنویسید:\n'+title+'\n\nاین کار قابل بازگشت نیست.');
+ if(typed===null)return;
+ if(typed.trim()!==title.trim()){notify('نام مسابقه مطابقت نداشت؛ حذف لغو شد.');return}
+ deletingRoomId=roomToDelete;renderManagement();
+ try{
+   await runTransaction(db,async transaction=>{
+     const fresh=await transaction.get(reference);
+     if(!fresh.exists())throw new Error('ALREADY_DELETED');
+     if(fresh.data().revision!==lastRevision)throw new Error('CHANGED');
+     transaction.delete(reference);
+   },{maxAttempts:3});
+   if(roomId===roomToDelete)changeRoom(null);
+   notify('مسابقه «'+title+'» حذف شد.');
+ }catch(err){
+   console.error('delete tournament:',err);
+   notify(err.message==='CHANGED'?'نتایج مسابقه اخیراً تغییر کرده؛ برای جلوگیری از حذف اشتباه دوباره اقدام کن.':
+          err.message==='ALREADY_DELETED'?'مسابقه قبلاً حذف شده است.':'حذف انجام نشد؛ قانون Firestore یا دسترسی مدیریت را بررسی کن.');
+ }finally{deletingRoomId=null;renderManagement()}
+}
+$('roomList').onclick=e=>{
+ if(!canManage())return;
+ const deleteButton=e.target.closest('[data-delete-room]');
+ if(deleteButton){deleteTournament(deleteButton.dataset.deleteRoom);return}
+ const openButton=e.target.closest('[data-room]');
+ if(openButton)changeRoom(openButton.dataset.room);
+};
 $('requestsList').onclick=async e=>{
  const approve=e.target.closest('[data-approve]'),deny=e.target.closest('[data-deny]');if(!canManage()||(!approve&&!deny))return;
  const uid=approve?approve.dataset.approve:deny.dataset.deny;if(uid===ownerUid){notify('حساب مالک قابل تغییر نیست.');return}
