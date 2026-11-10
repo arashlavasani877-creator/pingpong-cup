@@ -4,9 +4,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="جام پینگ‌پنگ">
-<link rel="manifest" href="./manifest.webmanifest?v=6">
-<link rel="apple-touch-icon" href="./apple-touch-icon.png?v=6">
-<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png?v=6"><style>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png"><style>
 :root{color-scheme:dark;--bg:#101c25;--panel:#1a2b36;--line:#344954;--lime:#d7ff63;--muted:#a8bcc6}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 10% 0,#244839,transparent 55%),var(--bg);color:#f5f8f8;font:16px Tahoma,Arial,sans-serif;line-height:1.8}main{max-width:1200px;margin:auto;padding:30px 22px}header{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding-bottom:22px}.logo{font-size:27px;font-weight:bold}.badge{color:var(--lime);border:1px solid #6b8043;padding:4px 14px;border-radius:30px;font-size:12px}h1{font-size:clamp(30px,5vw,52px);line-height:1.45;margin:28px 0 10px}h2{font-size:21px;margin:0 0 16px}h3{font-size:15px}.muted,small{color:var(--muted)}.layout{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;margin-top:26px}.panel{background:var(--panel);padding:26px;border:1px solid var(--line);border-radius:22px}label{display:block;margin-bottom:8px}input,textarea{width:100%;background:#11212b;border:1px solid #4a606b;border-radius:12px;padding:12px;color:white;font:inherit}textarea{resize:vertical;min-height:210px}button,.filebtn{font:inherit;border:1px solid var(--line);background:#263d49;color:white;padding:10px 17px;border-radius:12px;cursor:pointer;display:inline-block}button:hover,.filebtn:hover{border-color:var(--lime)}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--lime);outline-offset:3px}.primary{background:var(--lime);color:#142219;border:0;font-weight:bold}.toolbar{display:flex;flex-wrap:wrap;gap:9px;margin:20px 0}.big{font-size:46px;color:var(--lime);font-weight:bold}.step{display:flex;gap:16px;margin:22px 0}.step b{color:var(--lime)}.stats{display:flex;gap:30px;flex-wrap:wrap}.stats strong{font-size:26px;color:var(--lime)}.board{display:flex;gap:20px;overflow-x:auto;padding:10px 0 24px;align-items:stretch}.round{min-width:260px;flex:1}.games{display:flex;flex-direction:column;justify-content:space-around;gap:22px;height:calc(100% - 65px)}.match{border:1px solid var(--line);background:var(--panel);border-radius:15px;padding:14px}.match small{display:block;margin-bottom:8px}.player{display:block;width:100%;margin:6px 0;text-align:right;overflow-wrap:anywhere}.player:disabled{cursor:default;opacity:.55}.player.win{border-color:var(--lime);color:var(--lime);opacity:1;background:#30452c}.champ{background:linear-gradient(120deg,#304c32,#233b47);border:1px solid var(--lime);text-align:center;padding:24px;border-radius:20px;margin:22px 0}.champ strong{display:block;font-size:36px;color:var(--lime);overflow-wrap:anywhere}.next{padding:20px;border-right:4px solid var(--lime);background:#243c38;border-radius:14px}.error{color:#ffb4a8;min-height:26px}.hidden{display:none!important}footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:20px;margin-top:30px}#toast{position:fixed;bottom:20px;left:20px;right:20px;max-width:600px;margin:auto;background:#eef5e7;color:#15241b;border-radius:12px;padding:12px;z-index:5} @media(max-width:700px){.layout{grid-template-columns:1fr}main{padding:18px 14px}.panel{padding:20px}.logo{font-size:21px}.stats{gap:20px}}@media print{body{background:white;color:black}.toolbar,#setup,footer,.badge,.next{display:none!important}.board{overflow:visible;flex-wrap:wrap}.match,.panel,.champ{background:white;color:black}.player{color:black;background:white}.round{min-width:210px}.player.win{color:black;border:2px solid black}.muted,small{color:#555}header{padding:0}.games{height:auto}h1{font-size:28px}}
 
 #connect{margin-top:18px;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:16px 20px}
@@ -37,25 +37,91 @@
 .room-actions{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:700px){header{flex-wrap:wrap}#installApp{width:100%}.room-actions{width:100%}.room-actions button{flex:1}}
 @media print{#installApp,.install-help,.room-actions button[data-delete-room]{display:none!important}}
-</style><main><header><div class="logo">🏓 جام پینگ‌پنگ</div><span class="badge">از قرعه‌کشی تا قهرمانی</span><button id="installApp" type="button">📲 نصب اپلیکیشن</button></header>
-<div id="installHelp" class="install-help hidden" role="status" aria-live="polite">
-  <strong>راهنمای نصب جام پینگ‌پنگ</strong>
-  <p id="installHelpText">در مرورگر خود گزینه نصب برنامه را انتخاب کنید.</p>
-  <button id="closeInstallHelp" type="button">بستن راهنما</button>
-</div>
+
+/* V6 spectator-first visual system: photograph is decorative; content remains readable. */
+body{background:#08141e;color:#f7fafb;min-height:100dvh}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:
+ linear-gradient(180deg,rgba(5,13,21,.58) 0%,rgba(4,14,24,.78) 43%,rgba(5,16,26,.93) 100%),
+ url('./championship-background.webp') center top / cover no-repeat}
+body:has(#tournament:not(.hidden))::before{background:
+ linear-gradient(180deg,rgba(3,13,22,.75),rgba(4,13,21,.94)),
+ url('./championship-background.webp') center top / cover no-repeat}
+main{position:relative;z-index:1;max-width:1190px;padding-top:22px}
+header{border-bottom:1px solid rgba(175,208,219,.24);padding:10px 0 20px;gap:16px;min-height:80px}
+.logo{font-size:clamp(23px,4vw,31px);text-shadow:0 2px 18px #06131a}
+.panel{background:rgba(18,36,49,.90);border:1px solid rgba(157,205,222,.18);box-shadow:0 12px 42px rgba(0,0,0,.14);backdrop-filter:blur(10px)}
+.account-btn{width:50px;height:50px;display:grid;place-items:center;background:rgba(22,43,56,.88);border:1px solid rgba(201,231,242,.3);border-radius:50%;color:#e6f9ff;transition:transform .2s,border-color .2s}
+.account-btn:hover{border-color:var(--lime);transform:translateY(-2px)}
+.account-btn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.account-dropdown{position:absolute;top:86px;left:22px;right:auto;z-index:30;max-width:390px;width:calc(100% - 44px);border-radius:22px;background:rgba(12,26,36,.98);border:1px solid rgba(172,209,222,.32);padding:16px;box-shadow:0 25px 55px rgba(0,0,0,.55);backdrop-filter:blur(22px)}
+.account-dropdown .panel{background:none;border:0;box-shadow:none;backdrop-filter:none;padding:4px 3px}
+.account-dropdown #managerLogin input{margin:8px 0}
+.account-dropdown #managerTools button{margin:5px 3px 4px 0}
+.account-dropdown .account-title{font-size:17px;font-weight:800;color:#d7ff63;padding:2px 0 10px}
+.account-dropdown #status{font-size:12px;color:#b6c8cf;margin-bottom:14px}
+#accountInfo{font-size:12px;color:#d6e1e8;overflow-wrap:anywhere}
+#showLogin{width:100%;background:#d7ff63;color:#162322;font-weight:800}
+#requestPanel{margin-top:14px}
+#requestPanel button{margin:5px 0}
+.install-strip{display:flex;justify-content:center;padding:18px 0 20px}
+#installApp{background:linear-gradient(115deg,#e0ff84,#bbef52);color:#142319;border:0;font-weight:800;box-shadow:0 12px 30px rgba(11,24,14,.26);width:min(460px,100%)}
+#installAppMenu{width:100%;margin-top:9px;background:#284f4c;border-color:#446963}
+.install-help{margin:0 0 16px;background:rgba(16,40,50,.94);border-radius:14px;padding:12px 16px;border:1px solid rgba(215,255,99,.4)}
+#waiting{max-width:900px;margin:4px auto 25px;padding:32px}
+#waiting>h2{font-size:clamp(22px,4vw,30px)}
+#waiting>.muted{line-height:2}
+.room-row{border-bottom:1px solid rgba(180,206,216,.16);padding:18px 0;gap:13px}
+.room-row:last-child{border-bottom:0}
+.room-row strong{font-size:17px}
+.room-row small{display:block}
+.trophy-tag{display:inline-block;margin:8px 0 4px;padding:4px 12px;color:#ffe4a3;background:rgba(155,110,16,.14);border:1px solid rgba(242,189,67,.42);border-radius:30px;font-size:13px}
+#publicRooms button{background:#294656;border:1px solid #3b5b6b;white-space:nowrap}
+#publicRooms button:hover{border-color:var(--lime)}
+.champ{background:linear-gradient(140deg,rgba(102,72,21,.84),rgba(17,52,60,.95));border-color:#f3c568;box-shadow:0 18px 38px rgba(0,0,0,.18)}
+.champ-icon{font-size:62px;margin-bottom:10px;filter:drop-shadow(0 6px 9px rgba(0,0,0,.25))}
+.champ strong{color:#ffe69a;font-size:clamp(32px,6vw,49px)}
+.runner-up{display:inline-block;margin-top:16px;padding:8px 20px;background:rgba(0,0,0,.16);border-radius:24px;color:#e7f0f4}
+.champ-sub{color:#d9dcbf;font-size:13px;margin-top:8px}
+.section-eyebrow{display:block;color:#c7dfd7;font-size:12px;letter-spacing:.2px;margin-bottom:6px}
+#next strong{font-size:clamp(18px,3.2vw,25px);color:#f8ffff}
+.versus{display:inline-block;color:var(--lime);padding:0 10px;font:900 14px Arial}
+.spectator-recent{margin:18px 0;padding:20px 24px}
+.section-title{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.section-title h2{margin:0}
+.section-title span{font-size:11px;color:var(--lime)}
+.recent-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(214,234,244,.11)}
+.recent-row:last-child{border-bottom:0}
+.recent-medal{background:rgba(210,255,100,.15);color:#d7ff63;display:grid;place-items:center;border-radius:50%;width:32px;height:32px;flex-shrink:0}
+.recent-row strong{font-size:15px}.recent-row small{display:block;font-size:11px}
+.recent-opponent{margin-inline-start:auto;color:#c2d2dd;font-size:12px;text-align:left}
+.correct-winner{margin-top:10px;width:100%;border:1px dashed #86b8c5;background:rgba(61,94,105,.22);font-size:12px;color:#c7ecf0;padding:6px}
+.edit-modal{position:fixed;inset:0;z-index:100;background:rgba(0,9,15,.78);display:grid;place-items:center;padding:20px;backdrop-filter:blur(5px)}
+.edit-modal>.panel{width:min(520px,100%);max-height:90dvh;overflow-y:auto}
+.edit-modal textarea{min-height:220px;max-height:50dvh}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+#setup.hidden,#managerToolbar.hidden{display:none!important}
+@media(max-width:700px){.account-dropdown{top:80px;left:14px;width:calc(100% - 28px)}main{padding:16px 14px}#waiting{padding:24px 18px}.room-row{flex-direction:column;align-items:stretch}.room-row button{width:100%}#installApp{width:100%}header{min-height:70px}}
+@media print{body::before{display:none!important}.account-dropdown,.install-strip,#accountToggle,#editNamesModal,.correct-winner{display:none!important}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+</style><main><header><div class="logo">🏓 جام پینگ‌پنگ</div><button id="accountToggle" class="account-btn" type="button" aria-label="حساب کاربری" aria-expanded="false" aria-controls="accountDropdown"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.5-4.5 3.2-7 8-7s7.5 2.5 8 7"/></svg></button></header>
+<div class="install-strip"><button id="installApp" type="button">📲 نصب اپلیکیشن</button></div>
+<div id="installHelp" class="install-help hidden" role="status" aria-live="polite"><p id="installHelpText"></p><button id="closeInstallHelp" type="button">بستن</button></div>
+<div id="accountDropdown" class="account-dropdown hidden"><div class="account-title">حساب کاربری</div>
 <section id="connect" class="panel"><div id="status" role="status">در حال آماده‌سازی اتصال...</div>
 <button id="showLogin" type="button">ورود / درخواست مدیریت</button><div id="managerLogin" class="hidden"><input id="email" type="email" autocomplete="username" placeholder="ایمیل مدیر مسابقه" aria-label="ایمیل مدیر"><input id="password" type="password" autocomplete="current-password" placeholder="رمز ورود مدیر" aria-label="رمز عبور مدیر"><button id="login" class="primary">ورود مدیر</button><button id="register" type="button">ساخت حساب و درخواست مدیریت</button></div>
 <div id="managerTools" class="hidden"><button id="share">کپی لینک تماشاگران</button><button id="logout">خروج از حساب</button></div>
 <div id="accountInfo" class="hidden"></div>
 </section>
-<section id="requestPanel" class="panel hidden"><h2>درخواست دسترسی مدیریت</h2><p id="requestDescription" class="muted">اگر حساب ساخته‌ای ولی هنوز مدیر نیستی، درخواستت را ثبت کن تا یکی از مدیران آن را تأیید کند.</p><div id="registerTools"><button id="requestAccess" class="primary">ارسال درخواست مدیریت</button><button id="copyUid">کپی شناسه حساب (UID)</button></div><small id="signupHint"></small></section>
+<section id="requestPanel" class="panel hidden"><h2>درخواست دسترسی مدیریت</h2><p id="requestDescription" class="muted">اگر حساب ساخته‌ای ولی هنوز مدیر نیستی، درخواستت را ثبت کن تا یکی از مدیران آن را تأیید کند.</p><div id="registerTools"><button id="requestAccess" class="primary">ارسال درخواست مدیریت</button><button id="copyUid">کپی شناسه حساب (UID)</button></div><small id="signupHint"></small></section><button id="installAppMenu" type="button">📲 نصب اپلیکیشن</button></div>
 <section id="adminPanel" class="hidden"><div class="panes">
   <div class="panel"><h2>مسابقات</h2><button id="startNew" class="primary">+ ساخت مسابقه جدید</button><div id="roomList"></div></div>
   <div class="panel"><h2>درخواست‌های مدیریت</h2><p class="muted">هر مدیر می‌تواند درخواست‌ها را تأیید یا رد کند.</p><div id="requestsList"></div></div>
 </div><section class="panel" style="margin-top:18px"><h2>مدیران فعلی</h2><p class="muted">همه مدیران اختیارات یکسان دارند؛ حساب مالک ثابت سیستم قابل حذف نیست.</p><div id="managersList"></div></section></section>
 <div id="waiting" class="panel"><h2>🏓 تماشای آنلاین مسابقه</h2><p class="muted">به‌صورت تماشاگر وارد شده‌اید. یک مسابقه را انتخاب کنید و نتایج آن را زنده ببینید. برای تماشا نیازی به ورود نیست.</p><div id="publicRooms"><p class="muted">در حال دریافت فهرست مسابقات...</p></div></div>
-<section id="setup"><h1>اسم‌ها با شما.<br><span style="color:var(--lime)">دو فرصت برای قهرمانی.</span></h1><p class="muted">بازیکن‌ها را وارد کنید؛ جدول مسابقات دوحذفی خودکار ساخته می‌شود.</p><div class="layout"><div class="panel"><label for="title">نام مسابقه</label><input id="title" maxlength="80" value="جام دوستانه پینگ‌پنگ"><label for="names" style="margin-top:18px">نام بازیکن‌ها؛ هر نفر در یک خط</label><textarea id="names" placeholder="آرش&#10;علی&#10;رضا&#10;محمد" maxlength="12000"></textarea><small id="count">۰ بازیکن</small><p id="error" class="error" role="alert"></p><button class="primary" id="start">قرعه‌کشی و شروع مسابقه ←</button></div><div class="panel"><span class="badge">دوحذفی با همگام‌سازی زنده</span><div class="step"><b>۰۱</b><div><strong>اسم‌ها را بنویسید</strong><div class="muted">از ۲ تا ۶۴ نفر؛ نام‌های مشابه را با نام خانوادگی مشخص کنید.</div></div></div><div class="step"><b>۰۲</b><div><strong>بازی کنید و برنده را بزنید</strong><div class="muted">در هر کارت، روی اسم برنده بزنید. مسیر برنده و بازنده، هر دو خودکار مشخص می‌شوند.</div></div></div><div class="step"><b>۰۳</b><div><strong>قهرمان را جشن بگیرید</strong><div class="muted">باخت اول: ورود به جدول بازنده‌ها. باخت دوم: حذف. فینال در صورت نیاز تکرار می‌شود؛ تعداد نامتوازن هم با استراحت مدیریت می‌شود.</div></div></div><label class="filebtn" for="import">بازیابی مسابقه از فایل</label></div></div></section>
-<section id="tournament" class="hidden"><h1 id="cupTitle"></h1><div class="stats" id="stats"></div><div class="toolbar" id="managerToolbar"><button id="undo">↶ برگشت آخرین نتیجه</button><button id="export">ذخیره نسخه پشتیبان</button><label class="filebtn" for="import">بازیابی از فایل</label><button id="print">چاپ جدول / PDF</button><button id="reset">ساخت مسابقه دیگر</button></div><div id="champ"></div><div id="standings" class="panel" style="margin:18px 0"></div><div class="next" id="next" aria-live="polite"></div><p class="muted">مدیر: روی نام برنده بزنید. تماشاگران: نتایج خودکار نمایش داده می‌شوند. جدول را در موبایل به طرفین بکشید.</p><div id="board"></div></section>
-<input id="import" type="file" accept=".json,application/json" hidden><footer id="storage">نتایج مسابقه از Firebase همگام‌سازی می‌شود. فقط مدیر اجازه ثبت یا تغییر دارد.</footer></main><div id="toast" class="hidden" role="status"></div>
+<section id="setup" class="hidden"><h1>اسم‌ها با شما.<br><span style="color:var(--lime)">دو فرصت برای قهرمانی.</span></h1><p class="muted">بازیکن‌ها را وارد کنید؛ جدول مسابقات دوحذفی خودکار ساخته می‌شود.</p><div class="layout"><div class="panel"><label for="title">نام مسابقه</label><input id="title" maxlength="80" value="جام دوستانه پینگ‌پنگ"><label for="names" style="margin-top:18px">نام بازیکن‌ها؛ هر نفر در یک خط</label><textarea id="names" placeholder="آرش&#10;علی&#10;رضا&#10;محمد" maxlength="12000"></textarea><small id="count">۰ بازیکن</small><p id="error" class="error" role="alert"></p><button class="primary" id="start">قرعه‌کشی و شروع مسابقه ←</button></div><div class="panel"><span class="badge">دوحذفی با همگام‌سازی زنده</span><div class="step"><b>۰۱</b><div><strong>اسم‌ها را بنویسید</strong><div class="muted">از ۲ تا ۶۴ نفر؛ نام‌های مشابه را با نام خانوادگی مشخص کنید.</div></div></div><div class="step"><b>۰۲</b><div><strong>بازی کنید و برنده را بزنید</strong><div class="muted">در هر کارت، روی اسم برنده بزنید. مسیر برنده و بازنده، هر دو خودکار مشخص می‌شوند.</div></div></div><div class="step"><b>۰۳</b><div><strong>قهرمان را جشن بگیرید</strong><div class="muted">باخت اول: ورود به جدول بازنده‌ها. باخت دوم: حذف. فینال در صورت نیاز تکرار می‌شود؛ تعداد نامتوازن هم با استراحت مدیریت می‌شود.</div></div></div><label class="filebtn" for="import">بازیابی مسابقه از فایل</label></div></div></section>
+<section id="tournament" class="hidden"><h1 id="cupTitle"></h1><div class="stats" id="stats"></div><div class="toolbar hidden" id="managerToolbar"><button id="editNames">✎ ویرایش نام بازیکنان</button><button id="undo">↶ برگشت آخرین نتیجه</button><button id="export">ذخیره نسخه پشتیبان</button><label class="filebtn" for="import">بازیابی از فایل</label><button id="print">چاپ جدول / PDF</button><button id="reset">ساخت مسابقه دیگر</button></div><div id="champ"></div><div id="standings" class="panel" style="margin:18px 0"></div><div class="next" id="next" aria-live="polite"></div><div id="recentResults" class="panel spectator-recent"></div><p class="muted">مدیر: روی نام برنده بزنید. تماشاگران: نتایج خودکار نمایش داده می‌شوند. جدول را در موبایل به طرفین بکشید.</p><div id="board"></div></section>
+<input id="import" type="file" accept=".json,application/json" hidden></main>
+<div id="editNamesModal" class="edit-modal hidden" role="dialog" aria-modal="true" aria-labelledby="editNamesHeading"><div class="panel"><h2 id="editNamesHeading">ویرایش نام بازیکنان</h2><p class="muted">هر نفر در یک خط. ترتیب بازیکنان را عوض نکن؛ فقط نام را اصلاح کن. قرعه‌کشی و نتایج حفظ می‌شوند.</p><textarea id="editNamesArea" aria-label="نام بازیکنان"></textarea><p class="error" id="editNamesError" role="alert"></p><div class="modal-actions"><button id="saveEditNames" class="primary">ذخیره تغییرات</button><button id="closeEditNames">انصراف</button></div></div></div><div id="toast" class="hidden" role="status"></div>
+<script src="./account-ui.js" defer></script>
 <script src="./pwa.js" defer></script>
 <script type="module" src="./app.js"></script></html>

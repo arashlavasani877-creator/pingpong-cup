@@ -48,13 +48,36 @@ function renderPublicRooms(){
  const target=$('publicRooms');
  if(!target)return;
  target.innerHTML=publicRooms.length?
- publicRooms.map(r=>'<div class="room-row"><div class="row-details"><strong>'+esc(r.title)+'</strong><small>'+fa(r.count)+' بازیکن</small></div><button data-public-room="'+esc(r.id)+'">مشاهده جدول</button></div>').join(''):
+ publicRooms.map(r=>'<div class="room-row spectator-room"><div class="row-details"><strong>'+esc(r.title)+'</strong><small>'+fa(r.count)+' بازیکن · '+(r.champion?'پایان‌یافته':'در حال برگزاری')+'</small>'+(r.champion?'<span class="trophy-tag">🏆 قهرمان: '+esc(r.champion)+'</span>'+(r.runner?'<small>🥈 نایب‌قهرمان: '+esc(r.runner)+'</small>':''):'')+(r.latest?'<small>آخرین نتیجه: '+esc(r.latest)+'</small>':'')+'</div><button data-public-room="'+esc(r.id)+'">مشاهده جدول</button></div>').join(''):
  '<p class="muted">هنوز مسابقه‌ای برای تماشا وجود ندارد.</p>';
+}
+function tournamentHighlights(s){
+ const {all,champion}=summary(s), byKey=new Map(all.map(m=>[m.key,m]));
+ const finale=byKey.get('F2')?.done?byKey.get('F2'):byKey.get('F1')?.done&&champion!==null?byKey.get('F1'):null;
+ const runner=finale?(finale.a.id===champion?finale.b.id:finale.a.id):null;
+ const recent=s.history.slice(-5).reverse().map(key=>byKey.get(key)).filter(m=>m&&m.done&&!m.bye);
+ const next=all.filter(m=>m.ready&&!m.done).sort((a,b)=>{
+  const priority=m=>m.group==='W'?2*m.round:m.group==='L'?m.round+1:100+m.round;
+  return priority(a)-priority(b)||a.number-b.number;
+ })[0];
+ return {all,champion,runner,recent,next};
+}
+function publicRoomFromDoc(d){
+ const s=d.data()?.state;
+ const row={id:d.id,title:s?.title||'مسابقه جدید',count:s?.players?.length||0,champion:null,runner:null,latest:null};
+ if(!s)return row;
+ try{
+  const x=tournamentHighlights(s);
+  if(x.champion!==null)row.champion=s.players[x.champion];
+  if(x.runner!==null)row.runner=s.players[x.runner];
+  if(x.recent.length)row.latest=s.players[x.recent[0].winner]+' مقابل '+s.players[x.recent[0].loser];
+ }catch(error){console.warn('Tournament summary failed:',d.id,error)}
+ return row;
 }
 function listenPublicRooms(){
  if(unsubPublicRooms){unsubPublicRooms();unsubPublicRooms=null}
  unsubPublicRooms=onSnapshot(collection(db,'tournaments'),snapshot=>{
-   publicRooms=snapshot.docs.map(d=>({id:d.id,title:d.data()?.state?.title||'مسابقه جدید',count:d.data()?.state?.players?.length||0}));
+   publicRooms=snapshot.docs.map(publicRoomFromDoc);
    renderPublicRooms();
  },err=>{console.error('public tournaments:',err);$('publicRooms').textContent='فهرست مسابقات قابل دریافت نیست؛ قوانین Firestore یا اتصال را بررسی کنید.';});
 }
@@ -158,6 +181,68 @@ function bracket(s){
 function summary(s){let all=bracket(s),losses=s.players.map(()=>0);for(let m of all)if(m.done&&!m.bye)losses[m.loser]++;let f1=all.find(m=>m.key==='F1'),f2=all.find(m=>m.key==='F2');let champion=f2.done?f2.winner:f1.done&&f1.winner===f1.a.id?f1.winner:null;return {all,losses,champion};}
 function validate(s){if(!s||s.version!==2||typeof s.title!=='string'||s.title.length>80||!Array.isArray(s.players)||s.players.length<2||s.players.length>64||s.players.some(p=>typeof p!=='string'||!p.trim()||p.length>60)||new Set(s.players).size!==s.players.length)throw Error();let size=2**Math.ceil(Math.log2(s.players.length));if(!Array.isArray(s.slots)||s.slots.length!==size)throw Error();let ids=s.slots.filter(x=>x!==null);if(ids.length!==s.players.length||new Set(ids).size!==ids.length||ids.some(x=>!Number.isInteger(x)||x<0||x>=s.players.length))throw Error();if(!Array.isArray(s.history)||!s.results||typeof s.results!=='object'||s.history.length>2*s.players.length-1)throw Error();let clean={version:2,title:s.title,players:s.players,slots:s.slots,results:{},history:[]};for(let key of s.history){let m=bracket(clean).find(m=>m.key===key),id=s.results[key];if(!m||!m.ready||m.done||!Number.isInteger(id)||![m.a.id,m.b.id].includes(id))throw Error();clean.results[key]=id;clean.history.push(key)}if(Object.keys(s.results).length!==s.history.length)throw Error();return clean}
 
+// Player IDs never change during renaming; previous results and the draw remain intact.
+function renamePlayers(s,proposedNames){
+ if(proposedNames.length!==s.players.length)throw Error('COUNT');
+ const names=proposedNames.map(n=>n.trim());
+ if(names.some(n=>!n||n.length>60)||new Set(names).size!==names.length)throw Error('NAMES');
+ return validate({...s,players:names});
+}
+// Rebuild result history in its original order, keeping only still-valid independent games.
+// A changed winner invalidates downstream results when either player's identity differs.
+function revisedWinnerState(s,key,newWinner){
+ const oldMatches=new Map(bracket(s).map(m=>[m.key,m]));
+ const selected=oldMatches.get(key);
+ if(!selected||!selected.done||selected.bye||selected.winner===newWinner||![selected.a.id,selected.b.id].includes(newWinner))throw Error('SELECTION');
+ const clean={...s,results:{},history:[]};
+ for(const oldKey of s.history){
+  const old=oldMatches.get(oldKey);
+  const candidate=bracket(clean).find(m=>m.key===oldKey);
+  if(!old||!candidate||!candidate.ready||candidate.done||candidate.bye)continue;
+  if(oldKey!==key){
+   const before=[old.a.id,old.b.id].sort((a,b)=>a-b).join(',');
+   const after=[candidate.a.id,candidate.b.id].sort((a,b)=>a-b).join(',');
+   if(before!==after)continue;
+  }
+  const chosen=oldKey===key?newWinner:s.results[oldKey];
+  if(![candidate.a.id,candidate.b.id].includes(chosen))continue;
+  clean.results[oldKey]=chosen;
+  clean.history.push(oldKey);
+ }
+ return validate(clean);
+}
+async function editPlayerNames(){
+ if(!canManage()||!state||saving||!serverOnline)return;
+ $('editNamesArea').value=state.players.join('\n');
+ $('editNamesError').textContent='';
+ $('editNamesModal').classList.remove('hidden');
+ $('editNamesArea').focus();
+}
+$('editNames').onclick=editPlayerNames;
+$('closeEditNames').onclick=()=>$('editNamesModal').classList.add('hidden');
+$('saveEditNames').onclick=async()=>{
+ if(!state||!canManage())return;
+ const proposed=$('editNamesArea').value.split(/\r?\n/);
+ try{
+  const next=renamePlayers(state,proposed);
+  if(!confirm('نام‌ها بدون تغییر قرعه‌کشی یا نتایج اصلاح شوند؟'))return;
+  if(await saveOnline(next)){$('editNamesModal').classList.add('hidden');notify('نام بازیکنان اصلاح شد.');}
+ }catch(error){
+  $('editNamesError').textContent=error.message==='COUNT'?'تعداد خطوط باید دقیقاً برابر تعداد بازیکنان باشد.':'نام خالی، تکراری یا طولانی (بیش از ۶۰ نویسه) مجاز نیست.';
+ }
+};
+async function correctWinner(key){
+ if(!state||!canManage()||saving||!serverOnline)return;
+ const m=bracket(state).find(x=>x.key===key);
+ if(!m||!m.done||m.bye)return;
+ const alternative=m.a.id===m.winner?m.b.id:m.a.id;
+ const corrected=revisedWinnerState(state,key,alternative);
+ const removed=state.history.length-corrected.history.length;
+ const warning=removed>0?'\nتوجه: '+fa(removed)+' نتیجه وابسته که پس از این تغییر دیگر معتبر نیست حذف خواهد شد.':'\nنتایج مستقل حفظ می‌شوند.';
+ if(!confirm('اصلاح برنده بازی '+fa(m.number)+'\nبرنده فعلی: '+state.players[m.winner]+'\nبرنده صحیح: '+state.players[alternative]+warning+'\n\nتأیید می‌کنی؟'))return;
+ if(await saveOnline(corrected))notify('نتیجه اصلاح شد و مسیر جدول دوباره محاسبه شد.');
+}
+
 function render(){
  let active=!!state;
  $('setup').classList.toggle('hidden',active||!canManage()||(roomId&&!receivedRemote));
@@ -166,15 +251,16 @@ function render(){
  $('managerToolbar').classList.toggle('hidden',!canManage());
  if(!active)return;
  let {all,losses,champion}=summary(state),done=all.filter(m=>m.done&&!m.bye).length;
- let next=all.filter(m=>m.ready&&!m.done).sort((a,b)=>{const priority=m=>m.group==='W'?2*m.round:m.group==='L'?m.round+1:100+m.round;return priority(a)-priority(b)||a.number-b.number})[0];
+ const highlights=tournamentHighlights(state),{runner,recent,next}=highlights;
  $('cupTitle').textContent=state.title;
  $('stats').innerHTML='<div><strong>'+fa(state.players.length)+'</strong> بازیکن</div><div><strong>'+fa(done)+'</strong> بازی انجام‌شده</div><div><strong>'+fa(losses.filter(x=>x<2).length)+'</strong> بازیکن باقی‌مانده</div>';
  $('undo').disabled=!state.history.length||!canManage()||saving||!serverOnline;
- $('champ').innerHTML=champion!==null?'<div class="champ">🏆 قهرمان مسابقه<strong>'+esc(state.players[champion])+'</strong>تبریک! مسیر قهرمانی کامل شد.</div>':'';
- $('next').textContent=champion!==null?'مسابقه به پایان رسید.':next?'بازی پیشنهادی بعدی · شماره '+fa(next.number)+': '+state.players[next.a.id]+' × '+state.players[next.b.id]:'در انتظار نتایج';
+ $('champ').innerHTML=champion!==null?'<div class="champ"><div class="champ-icon">🏆</div><div>قهرمان جام</div><strong>'+esc(state.players[champion])+'</strong>'+(runner!==null?'<div class="runner-up">🥈 نایب‌قهرمان: '+esc(state.players[runner])+'</div>':'')+'<div class="champ-sub">پایان مسابقات · تبریک به همه بازیکنان</div></div>':'';
+ $('next').innerHTML=champion!==null?'<span class="section-eyebrow">مسابقات پایان یافت</span><strong>🏆 '+esc(state.players[champion])+'، قهرمان جام!</strong>':next?'<span class="section-eyebrow">🏓 بازی بعدی · شماره '+fa(next.number)+'</span><strong>'+esc(state.players[next.a.id])+' <span class="versus">VS</span> '+esc(state.players[next.b.id])+'</strong>':'<span class="section-eyebrow">بازی بعدی</span><strong>در انتظار مشخص‌شدن بازیکنان</strong>';
+ $('recentResults').innerHTML='<div class="section-title"><h2>آخرین نتایج</h2><span>به‌روزرسانی زنده</span></div>'+(recent.length?recent.slice(0,4).map(m=>'<div class="recent-row"><span class="recent-medal">✓</span><div><strong>'+esc(state.players[m.winner])+'</strong><small>پیروز بازی '+fa(m.number)+'</small></div><span class="recent-opponent">مقابل '+esc(state.players[m.loser])+'</span></div>').join(''):'<p class="muted">هنوز نتیجه‌ای ثبت نشده است.</p>');
  $('standings').innerHTML='<h2>وضعیت بازیکن‌ها</h2><div style="display:flex;flex-wrap:wrap;gap:10px">'+state.players.map((p,i)=>'<span class="badge" style="color:'+(losses[i]===2?'#a8bcc6':'#d7ff63')+'">'+esc(p)+' · '+(champion===i?'🏆 قهرمان':losses[i]===2?'حذف‌شده · ۲ باخت':losses[i]===1?'۱ باخت':'بدون باخت')+'</span>').join('')+'</div>';
  const describe=(p,ref)=>p.known?(p.id===null?'استراحت':esc(state.players[p.id])):(ref.out==='loser'?'بازنده':'برنده')+' بازی '+fa(all.find(x=>x.key===ref.key).number);
- $('board').innerHTML=['W','L','F'].map(group=>{let matches=all.filter(m=>m.group===group);if(!matches.length)return '';return '<h2 style="margin-top:28px">'+({W:'جدول برنده‌ها · بدون باخت',L:'جدول بازنده‌ها · یک فرصت دیگر',F:'فینال قهرمانی'})[group]+'</h2>'+(group==='F'?'<p class="muted">اگر نماینده جدول بازنده‌ها فینال اول را ببرد، هر دو یک باخت دارند و فینال دوم قهرمان را مشخص می‌کند.</p>':'')+'<div class="board">'+[...new Set(matches.map(m=>m.round))].map(r=>'<div class="round"><h3>'+(group==='F'?(r===0?'فینال اول':'فینال دوم · در صورت نیاز'):'مرحله '+fa(r+1))+'</h3><div class="games">'+matches.filter(m=>m.round===r).map(m=>'<div class="match"><small>بازی '+fa(m.number)+' · '+(!m.active?(champion!==null?'نیازی به برگزاری نیست':'مشروط به نتیجه فینال اول'):m.bye?'عبور خودکار با استراحت':m.done?'نتیجه ثبت شد':m.ready?'آماده بازی':'در انتظار نتایج')+'</small>'+[m.a,m.b].map((p,i)=>'<button class="player '+(m.done&&p.id!==null&&m.winner===p.id?'win':'')+'" '+(!m.ready||m.done||!canManage()||saving||!serverOnline?'disabled':'')+' data-key="'+m.key+'" data-id="'+p.id+'">'+describe(p,i===0?m.aRef:m.bRef)+(m.done&&p.id!==null&&m.winner===p.id?' ✓':'')+'</button>').join('')+'</div>').join('')+'</div></div>').join('')+'</div>'}).join('');
+ $('board').innerHTML=['W','L','F'].map(group=>{let matches=all.filter(m=>m.group===group);if(!matches.length)return '';return '<h2 style="margin-top:28px">'+({W:'جدول برنده‌ها · بدون باخت',L:'جدول بازنده‌ها · یک فرصت دیگر',F:'فینال قهرمانی'})[group]+'</h2>'+(group==='F'?'<p class="muted">اگر نماینده جدول بازنده‌ها فینال اول را ببرد، هر دو یک باخت دارند و فینال دوم قهرمان را مشخص می‌کند.</p>':'')+'<div class="board">'+[...new Set(matches.map(m=>m.round))].map(r=>'<div class="round"><h3>'+(group==='F'?(r===0?'فینال اول':'فینال دوم · در صورت نیاز'):'مرحله '+fa(r+1))+'</h3><div class="games">'+matches.filter(m=>m.round===r).map(m=>'<div class="match"><small>بازی '+fa(m.number)+' · '+(!m.active?(champion!==null?'نیازی به برگزاری نیست':'مشروط به نتیجه فینال اول'):m.bye?'عبور خودکار با استراحت':m.done?'نتیجه ثبت شد':m.ready?'آماده بازی':'در انتظار نتایج')+'</small>'+[m.a,m.b].map((p,i)=>'<button class="player '+(m.done&&p.id!==null&&m.winner===p.id?'win':'')+'" '+(!m.ready||m.done||!canManage()||saving||!serverOnline?'disabled':'')+' data-key="'+m.key+'" data-id="'+p.id+'">'+describe(p,i===0?m.aRef:m.bRef)+(m.done&&p.id!==null&&m.winner===p.id?' ✓':'')+'</button>').join('')+(m.done&&!m.bye&&canManage()?'<button class="correct-winner" data-correct-key="'+m.key+'" '+(saving||!serverOnline?'disabled':'')+'>✎ اصلاح برنده</button>':'')+'</div>').join('')+'</div></div>').join('')+'</div>'}).join('');
 }
 
 $('start').onclick=async()=>{
@@ -186,6 +272,8 @@ $('start').onclick=async()=>{
  if(roomId){if(await saveOnline(next))window.scrollTo(0,0)}else await createTournament(next);
 };
 $('board').onclick=async e=>{
+ const fix=e.target.closest('[data-correct-key]');
+ if(fix){await correctWinner(fix.dataset.correctKey);return;}
  const b=e.target.closest('[data-key]');if(!b||b.disabled||!state||!canManage())return;
  const m=bracket(state).find(m=>m.key===b.dataset.key),id=Number(b.dataset.id);
  if(!m||!m.ready||m.done||![m.a.id,m.b.id].includes(id))return;
