@@ -100,9 +100,96 @@ header{border-bottom:1px solid rgba(175,208,219,.24);padding:10px 0 20px;gap:16p
 .edit-modal textarea{min-height:220px;max-height:50dvh}
 .modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 #setup.hidden,#managerToolbar.hidden{display:none!important}
+/* Navigation, loading placeholders and a safe, readable exit confirmation. */
+.tournament-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 12px}
+.return-list{background:rgba(23,47,57,.9);border:1px solid rgba(204,236,237,.35);border-radius:14px;color:#f6ffff;white-space:normal}
+.return-list:hover{border-color:var(--lime)}
+.nav-hint{color:#c2d0d6;font-size:12px}
+#roomLoading{margin:20px auto;max-width:900px}
+#roomLoading>p{margin:6px 0 20px}
+.room-loading{display:flex;align-items:center;gap:12px;color:#d8e6ef;margin:16px 0}
+.spinner{width:19px;height:19px;flex-shrink:0;border:2px solid rgba(214,239,255,.25);border-top-color:#d7ff63;border-radius:50%;animation:pingpongspin .9s linear infinite}
+@keyframes pingpongspin{to{transform:rotate(360deg)}}
+.room-skeleton{height:60px;margin:12px 0;border-radius:13px;background:linear-gradient(105deg,rgba(60,88,97,.27) 20%,rgba(134,154,159,.22) 48%,rgba(60,88,97,.27) 75%);background-size:200% 100%;animation:pingpongshimmer 2s ease-in-out infinite}
+@keyframes pingpongshimmer{to{background-position-x:-200%}}
+.sync-note{margin:12px 0 6px;font-size:12px;color:#cbdcd7}
+.exit-panel{max-width:400px;text-align:center}
+.exit-emblem{font-size:40px}
+.exit-panel .modal-actions{justify-content:center}
+#roomSyncWarning{color:#e7d7a6;font-size:12px}
+@media(max-width:700px){.tournament-nav{flex-wrap:wrap}.nav-hint{display:none}.return-list{width:100%}}
 @media(max-width:700px){.account-dropdown{top:80px;left:14px;width:calc(100% - 28px)}main{padding:16px 14px}#waiting{padding:24px 18px}.room-row{flex-direction:column;align-items:stretch}.room-row button{width:100%}#installApp{width:100%}header{min-height:70px}}
 @media print{body::before{display:none!important}.account-dropdown,.install-strip,#accountToggle,#editNamesModal,.correct-winner{display:none!important}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* V8: single-purpose manager views with mobile bottom navigation. */
+#adminPanel{margin:18px auto 30px;max-width:1100px}
+.admin-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;margin:12px 0 22px}
+.admin-hero h1{font-size:clamp(27px,4.2vw,39px);margin:3px 0 5px}
+.admin-hero p{margin:0;color:#bdcbd3;font-size:14px}
+.admin-kicker{font-size:12px;letter-spacing:.2px;color:#d7ff63;font-weight:700}
+.admin-hero-action{white-space:nowrap;flex-shrink:0}
+.admin-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:7px;margin-bottom:24px;border:1px solid rgba(178,208,215,.2);border-radius:19px;background:rgba(13,29,41,.91);backdrop-filter:blur(16px)}
+.admin-tab{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 8px;border:1px solid transparent;background:transparent;border-radius:13px;color:#b5c5cb;font-weight:700;font-size:14px;min-width:0}
+.admin-tab svg{width:19px;height:19px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.admin-tab.active,.admin-tab[aria-selected="true"]{background:rgba(215,255,99,.14);color:#e7ffab;border-color:rgba(215,255,99,.3)}
+.admin-tab:hover{background:rgba(215,255,99,.09)}
+.pending-bubble{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 4px;border-radius:100px;background:#d7ff63;color:#152817;font:700 11px Tahoma,Arial,sans-serif}
+.admin-view{min-height:270px;animation:adminFade .16s ease}
+@keyframes adminFade{from{opacity:.7;transform:translateY(5px)}to{opacity:1;transform:none}}
+.section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:4px 0 20px;flex-wrap:wrap}
+.section-heading h2{margin:5px 0 0;font-size:clamp(23px,3.5vw,29px)}
+.admin-live{font-size:12px;color:#cfe4d7;display:flex;align-items:center;gap:8px}
+.admin-live span{width:8px;height:8px;background:#bff278;border-radius:100%;box-shadow:0 0 12px rgba(215,255,99,.5)}
+.admin-stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.admin-stat{background:linear-gradient(160deg,rgba(31,58,68,.94),rgba(16,31,45,.96));border:1px solid rgba(178,209,218,.18);padding:21px 18px;border-radius:19px;display:flex;flex-direction:column;min-height:150px}
+.admin-stat>span{font-size:13px;color:#cbd9df}
+.admin-stat strong{font-size:39px;color:#e4ff9a;line-height:1.5;font-variant-numeric:tabular-nums}
+.admin-stat small{font-size:11px;color:#acbec9;margin-top:auto}
+.admin-feature-grid,.admin-manager-grid,.admin-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:18px}
+.admin-feature h3,.admin-setting-card h3,.admin-quick-actions h3{margin:0 0 12px;font-size:18px}
+.admin-feature-content strong{display:block;font-size:17px;margin:4px 0 9px}
+.admin-feature-content p{margin:0 0 12px;line-height:1.85}
+.admin-feature-content button{font-size:13px}
+.admin-actions{display:flex;gap:10px;flex-wrap:wrap}
+.admin-list-panel{padding:24px}
+.admin-list-panel label{font-size:13px;color:#cadde4}
+#adminSearch{width:100%;margin-bottom:14px;max-width:none;min-width:0}
+.admin-filters{display:flex;gap:8px;flex-wrap:wrap}
+.filter-chip{padding:8px 14px;border-radius:50px;background:rgba(43,72,79,.64);border:1px solid rgba(177,216,215,.25);font-size:13px}
+.filter-chip.active,.filter-chip[aria-pressed="true"]{color:#15221c;background:#d7ff63;border-color:#d7ff63;font-weight:700}
+.admin-list-count{margin:14px 0 2px;color:#c0d0d7;font-size:12px}
+.admin-list-panel .room-row{padding:18px 0}
+.admin-list-panel .row-details strong{font-size:16px}
+.admin-list-panel .row-details small{line-height:1.75}
+.admin-status-tag{display:inline-block;margin-top:8px;padding:2px 9px;border:1px solid rgba(159,205,226,.26);background:rgba(43,76,88,.5);border-radius:10px;font-size:11px;color:#dfedf5}
+.admin-status-tag.finished{border-color:#b59a5c;color:#ffe39e;background:rgba(115,80,26,.18)}
+.admin-manager-grid .panel{min-width:0}
+.admin-setting-card{min-height:192px}
+.admin-setting-card button{margin:7px 6px 0 0}
+.settings-account{word-break:break-all;color:#e4ff9a;font-weight:700}
+@media(max-width:850px){.admin-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-feature-grid,.admin-manager-grid,.admin-settings-grid{grid-template-columns:1fr}}
+@media(max-width:740px){
+ .admin-hero{padding:4px 2px;align-items:flex-start}
+ .admin-hero h1{font-size:25px}
+ .admin-hero p{max-width:270px;line-height:1.7;font-size:12px}
+ .admin-hero-action{font-size:12px;padding:9px 10px}
+ .admin-tabs{position:fixed;bottom:0;right:0;left:0;z-index:28;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0;border:1px solid rgba(157,209,211,.28);border-bottom:0;background:rgba(8,21,30,.98);box-shadow:0 -12px 35px rgba(0,0,0,.46)}
+ .admin-tab{flex-direction:column;gap:3px;padding:8px 0 6px;font-size:11px}
+ .admin-tab svg{width:20px;height:20px}
+ main:has(#adminPanel:not(.hidden)){padding-bottom:105px}
+ .admin-view{padding-bottom:14px}
+ .admin-stat{padding:17px 12px;min-height:124px}
+ .admin-stat strong{font-size:31px}
+ .admin-stat>span{font-size:12px}
+ .admin-feature-grid,.admin-manager-grid,.admin-settings-grid{gap:12px}
+ .admin-list-panel{padding:18px 15px}
+ .admin-list-panel .room-actions{display:grid;grid-template-columns:1fr 1fr}
+ .admin-list-panel .room-actions button{width:auto;font-size:13px;padding:10px 7px}
+ .admin-quick-actions .admin-actions button{flex:1}
+}
+@media(max-width:390px){.admin-hero{flex-direction:column}.admin-hero-action{width:100%}.admin-stats-grid{gap:8px}}
+@media print{.admin-tabs,.admin-hero,#adminPanel{display:none!important}}
 </style><main><header><div class="logo">🏓 جام پینگ‌پنگ</div><button id="accountToggle" class="account-btn" type="button" aria-label="حساب کاربری" aria-expanded="false" aria-controls="accountDropdown"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c.5-4.5 3.2-7 8-7s7.5 2.5 8 7"/></svg></button></header>
 <div class="install-strip"><button id="installApp" type="button">📲 نصب اپلیکیشن</button></div>
 <div id="installHelp" class="install-help hidden" role="status" aria-live="polite"><p id="installHelpText"></p><button id="closeInstallHelp" type="button">بستن</button></div>
@@ -113,14 +200,59 @@ header{border-bottom:1px solid rgba(175,208,219,.24);padding:10px 0 20px;gap:16p
 <div id="accountInfo" class="hidden"></div>
 </section>
 <section id="requestPanel" class="panel hidden"><h2>درخواست دسترسی مدیریت</h2><p id="requestDescription" class="muted">اگر حساب ساخته‌ای ولی هنوز مدیر نیستی، درخواستت را ثبت کن تا یکی از مدیران آن را تأیید کند.</p><div id="registerTools"><button id="requestAccess" class="primary">ارسال درخواست مدیریت</button><button id="copyUid">کپی شناسه حساب (UID)</button></div><small id="signupHint"></small></section><button id="installAppMenu" type="button">📲 نصب اپلیکیشن</button></div>
-<section id="adminPanel" class="hidden"><div class="panes">
-  <div class="panel"><h2>مسابقات</h2><button id="startNew" class="primary">+ ساخت مسابقه جدید</button><div id="roomList"></div></div>
-  <div class="panel"><h2>درخواست‌های مدیریت</h2><p class="muted">هر مدیر می‌تواند درخواست‌ها را تأیید یا رد کند.</p><div id="requestsList"></div></div>
-</div><section class="panel" style="margin-top:18px"><h2>مدیران فعلی</h2><p class="muted">همه مدیران اختیارات یکسان دارند؛ حساب مالک ثابت سیستم قابل حذف نیست.</p><div id="managersList"></div></section></section>
-<div id="waiting" class="panel"><h2>🏓 تماشای آنلاین مسابقه</h2><p class="muted">به‌صورت تماشاگر وارد شده‌اید. یک مسابقه را انتخاب کنید و نتایج آن را زنده ببینید. برای تماشا نیازی به ورود نیست.</p><div id="publicRooms"><p class="muted">در حال دریافت فهرست مسابقات...</p></div></div>
-<section id="setup" class="hidden"><h1>اسم‌ها با شما.<br><span style="color:var(--lime)">دو فرصت برای قهرمانی.</span></h1><p class="muted">بازیکن‌ها را وارد کنید؛ جدول مسابقات دوحذفی خودکار ساخته می‌شود.</p><div class="layout"><div class="panel"><label for="title">نام مسابقه</label><input id="title" maxlength="80" value="جام دوستانه پینگ‌پنگ"><label for="names" style="margin-top:18px">نام بازیکن‌ها؛ هر نفر در یک خط</label><textarea id="names" placeholder="آرش&#10;علی&#10;رضا&#10;محمد" maxlength="12000"></textarea><small id="count">۰ بازیکن</small><p id="error" class="error" role="alert"></p><button class="primary" id="start">قرعه‌کشی و شروع مسابقه ←</button></div><div class="panel"><span class="badge">دوحذفی با همگام‌سازی زنده</span><div class="step"><b>۰۱</b><div><strong>اسم‌ها را بنویسید</strong><div class="muted">از ۲ تا ۶۴ نفر؛ نام‌های مشابه را با نام خانوادگی مشخص کنید.</div></div></div><div class="step"><b>۰۲</b><div><strong>بازی کنید و برنده را بزنید</strong><div class="muted">در هر کارت، روی اسم برنده بزنید. مسیر برنده و بازنده، هر دو خودکار مشخص می‌شوند.</div></div></div><div class="step"><b>۰۳</b><div><strong>قهرمان را جشن بگیرید</strong><div class="muted">باخت اول: ورود به جدول بازنده‌ها. باخت دوم: حذف. فینال در صورت نیاز تکرار می‌شود؛ تعداد نامتوازن هم با استراحت مدیریت می‌شود.</div></div></div><label class="filebtn" for="import">بازیابی مسابقه از فایل</label></div></div></section>
-<section id="tournament" class="hidden"><h1 id="cupTitle"></h1><div class="stats" id="stats"></div><div class="toolbar hidden" id="managerToolbar"><button id="editNames">✎ ویرایش نام بازیکنان</button><button id="undo">↶ برگشت آخرین نتیجه</button><button id="export">ذخیره نسخه پشتیبان</button><label class="filebtn" for="import">بازیابی از فایل</label><button id="print">چاپ جدول / PDF</button><button id="reset">ساخت مسابقه دیگر</button></div><div id="champ"></div><div id="standings" class="panel" style="margin:18px 0"></div><div class="next" id="next" aria-live="polite"></div><div id="recentResults" class="panel spectator-recent"></div><p class="muted">مدیر: روی نام برنده بزنید. تماشاگران: نتایج خودکار نمایش داده می‌شوند. جدول را در موبایل به طرفین بکشید.</p><div id="board"></div></section>
+<section id="adminPanel" class="hidden" aria-label="پنل مدیریت مسابقات">
+  <div class="admin-hero">
+    <div><span class="admin-kicker">پنل مدیریتی</span><h1>اتاق مدیریت جام</h1><p>مسابقات، بازیکنان و دسترسی‌ها در یک فضای منظم</p></div>
+    <button id="adminQuickCreate" type="button" class="primary admin-hero-action">＋ ساخت مسابقه</button>
+  </div>
+  <nav class="admin-tabs" role="tablist" aria-label="بخش‌های مدیریت">
+    <button id="adminTabDashboard" class="admin-tab active" data-admin-tab="dashboard" role="tab" aria-selected="true" aria-controls="adminViewDashboard" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/></svg><span>داشبورد</span></button>
+    <button id="adminTabTournaments" class="admin-tab" data-admin-tab="tournaments" role="tab" aria-selected="false" aria-controls="adminViewTournaments" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v5a5 5 0 0 1-10 0V3Z"/><path d="M7 5H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4M12 13v5m-5 3h10m-8-3h6"/></svg><span>مسابقات</span></button>
+    <button id="adminTabManagers" class="admin-tab" data-admin-tab="managers" role="tab" aria-selected="false" aria-controls="adminViewManagers" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 6a3 3 0 0 1 0 6m1 3a5 5 0 0 1 4 5"/></svg><span>مدیران <span id="pendingRequestsBubble" class="pending-bubble hidden"></span></span></button>
+    <button id="adminTabSettings" class="admin-tab" data-admin-tab="settings" role="tab" aria-selected="false" aria-controls="adminViewSettings" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.5 1.5 0 0 0 .3 1.65l.1.1-2 2-.1-.1a1.5 1.5 0 0 0-1.65-.3l-.2.1V21h-3v-.2a1.5 1.5 0 0 0-1.1-1.45l-.25-.07a1.5 1.5 0 0 0-1.45.35L9.9 19.8l-2-2 .1-.1a1.5 1.5 0 0 0 .3-1.65L8.2 16H6v-3h.2A1.5 1.5 0 0 0 7.65 11.9l.07-.25a1.5 1.5 0 0 0-.35-1.45L7.2 10l2-2 .1.1a1.5 1.5 0 0 0 1.65.3L11 8.2V6h3v.2a1.5 1.5 0 0 0 1.1 1.45l.25.07a1.5 1.5 0 0 0 1.45-.35L17 7.2l2 2-.1.1a1.5 1.5 0 0 0-.3 1.65l.1.2H21v3h-.2A1.5 1.5 0 0 0 19.4 15Z" transform="translate(-.5,-.5) scale(.97)"/></svg><span>تنظیمات</span></button>
+  </nav>
+  <section id="adminViewDashboard" class="admin-view" role="tabpanel" aria-labelledby="adminTabDashboard">
+    <div class="section-heading"><div><span class="admin-kicker">خلاصه وضعیت</span><h2>نمای کلی مسابقات</h2></div><span class="admin-live"><span aria-hidden="true"></span>اطلاعات زنده</span></div>
+    <div class="admin-stats-grid">
+      <div class="admin-stat"><span>کل مسابقات</span><strong id="dashAll">…</strong><small>تمام دوره‌ها</small></div>
+      <div class="admin-stat"><span>در حال برگزاری</span><strong id="dashActive">…</strong><small>در انتظار قهرمان</small></div>
+      <div class="admin-stat"><span>پایان‌یافته</span><strong id="dashFinished">…</strong><small>قهرمان مشخص شده</small></div>
+      <div class="admin-stat"><span>درخواست مدیریت</span><strong id="dashRequests">…</strong><small>در انتظار بررسی</small></div>
+    </div>
+    <div class="admin-feature-grid">
+      <div class="panel admin-feature"><h3>🏓 بازی پیشنهادی بعدی</h3><div id="dashNextMatch" class="admin-feature-content"><p class="muted">در حال دریافت...</p></div></div>
+      <div class="panel admin-feature"><h3>✓ آخرین نتیجه ثبت‌شده</h3><div id="dashLastResult" class="admin-feature-content"><p class="muted">در حال دریافت...</p></div></div>
+    </div>
+    <div class="panel admin-quick-actions"><h3>دسترسی سریع</h3><div class="admin-actions"><button id="dashSeeTournaments" type="button">مشاهده همه مسابقات</button><button id="dashSeeManagers" type="button">مدیریت دسترسی‌ها</button></div></div>
+  </section>
+  <section id="adminViewTournaments" class="admin-view hidden" role="tabpanel" aria-labelledby="adminTabTournaments">
+    <div class="section-heading"><div><span class="admin-kicker">مدیریت دوره‌ها</span><h2>مسابقات</h2></div><button id="startNew" class="primary" type="button">＋ مسابقه جدید</button></div>
+    <div class="panel admin-list-panel"><label for="adminSearch">جست‌وجوی نام مسابقه</label><input id="adminSearch" type="search" placeholder="نام مسابقه را بنویسید..." autocomplete="off">
+      <div class="admin-filters" role="group" aria-label="فیلتر وضعیت مسابقات"><button class="filter-chip active" data-admin-filter="all" type="button" aria-pressed="true">همه</button><button class="filter-chip" data-admin-filter="active" type="button" aria-pressed="false">در حال برگزاری</button><button class="filter-chip" data-admin-filter="finished" type="button" aria-pressed="false">پایان‌یافته</button></div>
+      <p id="adminRoomCount" class="admin-list-count" aria-live="polite"></p><div id="roomList"></div>
+    </div>
+  </section>
+  <section id="adminViewManagers" class="admin-view hidden" role="tabpanel" aria-labelledby="adminTabManagers">
+    <div class="section-heading"><div><span class="admin-kicker">سطوح دسترسی</span><h2>مدیریت کاربران</h2></div></div>
+    <div class="admin-manager-grid"><section class="panel"><h3>درخواست‌های مدیریت</h3><p class="muted">هر مدیر می‌تواند درخواست‌ها را تأیید یا رد کند.</p><div id="requestsList"></div></section>
+    <section class="panel"><h3>مدیران فعلی</h3><p class="muted">حساب مالک اصلی محافظت‌شده است و قابل حذف نیست.</p><div id="managersList"></div></section></div>
+  </section>
+  <section id="adminViewSettings" class="admin-view hidden" role="tabpanel" aria-labelledby="adminTabSettings">
+    <div class="section-heading"><div><span class="admin-kicker">ابزارهای مدیریتی</span><h2>تنظیمات و پشتیبان‌گیری</h2></div></div>
+    <div class="admin-settings-grid">
+      <section class="panel admin-setting-card"><h3>حساب مدیریت</h3><p class="muted">حسابی که هم‌اکنون با آن وارد شده‌اید</p><p id="settingsEmail" class="settings-account"></p><button id="settingsLogout" type="button">خروج از حساب</button></section>
+      <section class="panel admin-setting-card"><h3>نسخه پشتیبان مسابقه</h3><p class="muted">برای دریافت پشتیبان هر جام، آن را از فهرست باز کنید و «ذخیره نسخه پشتیبان» را بزنید.</p><button id="settingsGoToRooms" type="button">رفتن به مسابقات</button><button id="settingsImport" type="button">بازیابی فایل به‌عنوان مسابقه جدید</button></section>
+      <section class="panel admin-setting-card"><h3>نصب برنامه</h3><p class="muted">اگر مرورگر اجازه نصب مستقیم بدهد، درخواست نصب نمایش داده می‌شود.</p><button id="settingsInstall" type="button">نصب اپلیکیشن</button></section>
+      <section class="panel admin-setting-card"><h3>نسخه برنامه</h3><p><strong>PingPong Pro V8</strong></p><p class="muted">ثبت نتایج و کنترل دسترسی در نسخه آنلاین حفظ شده است.</p></section>
+    </div>
+  </section>
+</section>
+<div id="waiting" class="panel"><h2>🏓 تماشای آنلاین مسابقه</h2><p class="muted">به‌صورت تماشاگر وارد شده‌اید. یک مسابقه را انتخاب کنید و نتایج آن را زنده ببینید. برای تماشا نیازی به ورود نیست.</p><div id="publicRooms"><p class="muted">در حال دریافت فهرست مسابقات...</p></div><p id="roomSyncWarning" aria-live="polite"></p></div>
+<section id="setup" class="hidden"><div class="tournament-nav"><button id="cancelNew" class="return-list" type="button">‹ بازگشت به مدیریت مسابقات</button></div><h1>اسم‌ها با شما.<br><span style="color:var(--lime)">دو فرصت برای قهرمانی.</span></h1><p class="muted">بازیکن‌ها را وارد کنید؛ جدول مسابقات دوحذفی خودکار ساخته می‌شود.</p><div class="layout"><div class="panel"><label for="title">نام مسابقه</label><input id="title" maxlength="80" value="جام دوستانه پینگ‌پنگ"><label for="names" style="margin-top:18px">نام بازیکن‌ها؛ هر نفر در یک خط</label><textarea id="names" placeholder="آرش&#10;علی&#10;رضا&#10;محمد" maxlength="12000"></textarea><small id="count">۰ بازیکن</small><p id="error" class="error" role="alert"></p><button class="primary" id="start">قرعه‌کشی و شروع مسابقه ←</button></div><div class="panel"><span class="badge">دوحذفی با همگام‌سازی زنده</span><div class="step"><b>۰۱</b><div><strong>اسم‌ها را بنویسید</strong><div class="muted">از ۲ تا ۶۴ نفر؛ نام‌های مشابه را با نام خانوادگی مشخص کنید.</div></div></div><div class="step"><b>۰۲</b><div><strong>بازی کنید و برنده را بزنید</strong><div class="muted">در هر کارت، روی اسم برنده بزنید. مسیر برنده و بازنده، هر دو خودکار مشخص می‌شوند.</div></div></div><div class="step"><b>۰۳</b><div><strong>قهرمان را جشن بگیرید</strong><div class="muted">باخت اول: ورود به جدول بازنده‌ها. باخت دوم: حذف. فینال در صورت نیاز تکرار می‌شود؛ تعداد نامتوازن هم با استراحت مدیریت می‌شود.</div></div></div><label class="filebtn" for="import">بازیابی مسابقه از فایل</label></div></div></section>
+<div id="roomLoading" class="panel hidden" role="status" aria-live="polite"><p id="roomLoadingText">در حال دریافت جدول مسابقه...</p><button type="button" id="returnFromMissing" class="return-list">بازگشت به فهرست مسابقات</button></div>
+<section id="tournament" class="hidden"><div class="tournament-nav"><button id="returnToList" class="return-list" type="button">‹ بازگشت به فهرست مسابقات</button><span class="nav-hint">جام پینگ‌پنگ</span></div><h1 id="cupTitle"></h1><div class="stats" id="stats"></div><div class="toolbar hidden" id="managerToolbar"><button id="editNames">✎ ویرایش نام بازیکنان</button><button id="undo">↶ برگشت آخرین نتیجه</button><button id="export">ذخیره نسخه پشتیبان</button><label class="filebtn" for="import">بازیابی از فایل</label><button id="print">چاپ جدول / PDF</button><button id="reset">ساخت مسابقه دیگر</button></div><div id="champ"></div><div id="standings" class="panel" style="margin:18px 0"></div><div class="next" id="next" aria-live="polite"></div><div id="recentResults" class="panel spectator-recent"></div><p class="muted">مدیر: روی نام برنده بزنید. تماشاگران: نتایج خودکار نمایش داده می‌شوند. جدول را در موبایل به طرفین بکشید.</p><div id="board"></div></section>
 <input id="import" type="file" accept=".json,application/json" hidden></main>
+<div id="exitModal" class="edit-modal hidden" role="dialog" aria-modal="true" aria-labelledby="exitTitle"><div class="panel exit-panel"><div class="exit-emblem">🏓</div><h2 id="exitTitle">خروج از جام پینگ‌پنگ؟</h2><p class="muted">می‌خواهید از برنامه خارج شوید؟</p><div class="modal-actions"><button id="stayInApp" class="primary" type="button">ماندن در برنامه</button><button id="exitApp" type="button">خروج از برنامه</button></div></div></div>
 <div id="editNamesModal" class="edit-modal hidden" role="dialog" aria-modal="true" aria-labelledby="editNamesHeading"><div class="panel"><h2 id="editNamesHeading">ویرایش نام بازیکنان</h2><p class="muted">هر نفر در یک خط. ترتیب بازیکنان را عوض نکن؛ فقط نام را اصلاح کن. قرعه‌کشی و نتایج حفظ می‌شوند.</p><textarea id="editNamesArea" aria-label="نام بازیکنان"></textarea><p class="error" id="editNamesError" role="alert"></p><div class="modal-actions"><button id="saveEditNames" class="primary">ذخیره تغییرات</button><button id="closeEditNames">انصراف</button></div></div></div><div id="toast" class="hidden" role="status"></div>
 <script src="./account-ui.js" defer></script>
 <script src="./pwa.js" defer></script>

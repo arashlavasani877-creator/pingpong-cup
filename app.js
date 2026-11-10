@@ -16,6 +16,17 @@ if(roomId && !/^[a-zA-Z0-9]{1,128}$/.test(roomId))roomId=null;
 let revision=0,receivedRemote=false,serverOnline=false,saving=false;
 let rooms=[],managers=[],requests=[],publicRooms=[],loginExpanded=false;
 let deletingRoomId=null;
+let adminTab='dashboard',adminFilter='all',adminRoomsLoaded=false,newTournamentMode=false;
+// A list is not empty until Firestore's first snapshot arrives.
+let publicRoomsLoaded=false, publicRoomsError=false;
+const ROOM_CACHE_KEY='pingpong-public-room-preview-v7';
+try {
+ const preview=JSON.parse(localStorage.getItem(ROOM_CACHE_KEY)||'null');
+ if(preview && Number.isFinite(preview.savedAt) && Date.now()-preview.savedAt<12*3600*1000 && Array.isArray(preview.rooms)) {
+  publicRooms=preview.rooms.filter(r=>r && /^[a-zA-Z0-9]{1,128}$/.test(r.id) && typeof r.title==='string').slice(0,150);
+ }
+} catch(_error) { /* Private mode or unavailable storage: load directly from Firestore. */ }
+
 const canManage=()=>Boolean(user&&isManager);
 const isOwner=()=>Boolean(user&&ownerReady&&user.uid===ownerUid);
 function notify(message){$('toast').textContent=message;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),4000)}
@@ -25,14 +36,14 @@ $('names').oninput=()=>$('count').textContent=fa(names().length)+' بازیکن'
 function roomUrl(id){const u=new URL(location.href);if(id)u.searchParams.set('room',id);else u.searchParams.delete('room');u.hash='';return u.href}
 function shareUrl(){return roomUrl(roomId)}
 function clearListener(k){if(k==='room'&&unsubRoom){unsubRoom();unsubRoom=null}if(k==='role'&&unsubRole){unsubRole();unsubRole=null}}
-function stopAdminListeners(){for(const key of ['unsubRooms','unsubManagers','unsubRequests']){if(evalUnsub(key))evalUnsub(key)()}unsubRooms=unsubManagers=unsubRequests=null;rooms=[];managers=[];requests=[]}
+function stopAdminListeners(){for(const key of ['unsubRooms','unsubManagers','unsubRequests']){if(evalUnsub(key))evalUnsub(key)()}unsubRooms=unsubManagers=unsubRequests=null;rooms=[];managers=[];requests=[];adminRoomsLoaded=false}
 function evalUnsub(k){return k==='unsubRooms'?unsubRooms:k==='unsubManagers'?unsubManagers:unsubRequests}
 function managementButtons(){
  $('managerLogin').classList.toggle('hidden',!!user||!loginExpanded);
  $('showLogin').classList.toggle('hidden',!!user);
  $('managerTools').classList.toggle('hidden',!user);
  $('requestPanel').classList.toggle('hidden',!user||isManager);
- $('adminPanel').classList.toggle('hidden',!canManage());
+ $('adminPanel').classList.toggle('hidden',!canManage()||!!roomId||newTournamentMode);
  $('accountInfo').classList.toggle('hidden',!user);
  $('accountInfo').textContent=user ? `حساب: ${user.email||'بدون ایمیل'} · شناسه UID: ${user.uid}` : '';
  const writable=canManage()&&(!roomId||(receivedRemote&&serverOnline))&&!saving;
@@ -40,6 +51,7 @@ function managementButtons(){
  for(const id of ['undo','export'])$(id).disabled=!canManage()||saving||!state;
  $('share').disabled=!canManage()||!roomId;
  $('startNew').disabled=!canManage()||saving;
+ $('adminQuickCreate').disabled=!canManage()||saving;
  $('requestAccess').disabled=!user||isManager;
  $('copyUid').disabled=!user;
 }
@@ -47,10 +59,29 @@ function display(){render();managementButtons();renderManagement();renderPublicR
 function renderPublicRooms(){
  const target=$('publicRooms');
  if(!target)return;
- target.innerHTML=publicRooms.length?
+ if(!publicRoomsLoaded && !publicRooms.length){
+  target.innerHTML=publicRoomsError?
+   '<p class="muted" role="alert">دریافت مسابقات ممکن نشد. اتصال اینترنت را بررسی کنید و دوباره وارد صفحه شوید.</p>':
+   '<div class="room-loading" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span>در حال بارگذاری مسابقات...</div>'+
+   '<div class="room-skeleton" aria-hidden="true"></div><div class="room-skeleton" aria-hidden="true"></div>';
+  return;
+ }
+ const syncTag=!publicRoomsLoaded?'<div class="sync-note">نمایش فهرست ذخیره‌شده؛ در حال دریافت تازه‌ترین اطلاعات...</div>':'';
+ target.innerHTML=syncTag+(publicRooms.length?
  publicRooms.map(r=>'<div class="room-row spectator-room"><div class="row-details"><strong>'+esc(r.title)+'</strong><small>'+fa(r.count)+' بازیکن · '+(r.champion?'پایان‌یافته':'در حال برگزاری')+'</small>'+(r.champion?'<span class="trophy-tag">🏆 قهرمان: '+esc(r.champion)+'</span>'+(r.runner?'<small>🥈 نایب‌قهرمان: '+esc(r.runner)+'</small>':''):'')+(r.latest?'<small>آخرین نتیجه: '+esc(r.latest)+'</small>':'')+'</div><button data-public-room="'+esc(r.id)+'">مشاهده جدول</button></div>').join(''):
- '<p class="muted">هنوز مسابقه‌ای برای تماشا وجود ندارد.</p>';
+ '<p class="muted">هنوز مسابقه‌ای برای تماشا وجود ندارد.</p>');
 }
+// createdAt, not updatedAt: editing an old match must never move it above a newer cup.
+function dateMillis(ts){
+ if(ts && typeof ts.toMillis==='function')return ts.toMillis();
+ if(ts && Number.isFinite(ts.seconds))return ts.seconds*1000+(ts.nanoseconds||0)/1e6;
+ if(typeof ts==='number' && Number.isFinite(ts))return ts;
+ return 0;
+}
+function byNewestCreated(a,b){
+ return b.createdMillis-a.createdMillis || b.updatedMillis-a.updatedMillis || a.id.localeCompare(b.id);
+}
+
 function tournamentHighlights(s){
  const {all,champion}=summary(s), byKey=new Map(all.map(m=>[m.key,m]));
  const finale=byKey.get('F2')?.done?byKey.get('F2'):byKey.get('F1')?.done&&champion!==null?byKey.get('F1'):null;
@@ -64,35 +95,111 @@ function tournamentHighlights(s){
 }
 function publicRoomFromDoc(d){
  const s=d.data()?.state;
- const row={id:d.id,title:s?.title||'مسابقه جدید',count:s?.players?.length||0,champion:null,runner:null,latest:null};
+ const row={id:d.id,title:s?.title||'مسابقه جدید',count:s?.players?.length||0,createdMillis:dateMillis(d.data()?.createdAt),updatedMillis:dateMillis(d.data()?.updatedAt),champion:null,runner:null,latest:null,nextLabel:null};
  if(!s)return row;
  try{
   const x=tournamentHighlights(s);
   if(x.champion!==null)row.champion=s.players[x.champion];
   if(x.runner!==null)row.runner=s.players[x.runner];
   if(x.recent.length)row.latest=s.players[x.recent[0].winner]+' مقابل '+s.players[x.recent[0].loser];
+  if(x.next && x.next.a?.id!==null && x.next.b?.id!==null)row.nextLabel=s.players[x.next.a.id]+' × '+s.players[x.next.b.id];
  }catch(error){console.warn('Tournament summary failed:',d.id,error)}
  return row;
 }
 function listenPublicRooms(){
  if(unsubPublicRooms){unsubPublicRooms();unsubPublicRooms=null}
  unsubPublicRooms=onSnapshot(collection(db,'tournaments'),snapshot=>{
-   publicRooms=snapshot.docs.map(publicRoomFromDoc);
+   publicRooms=snapshot.docs.map(publicRoomFromDoc).sort(byNewestCreated);
+   publicRoomsLoaded=true; publicRoomsError=false;
+   $('roomSyncWarning').textContent='';
+   try{localStorage.setItem(ROOM_CACHE_KEY,JSON.stringify({savedAt:Date.now(),rooms:publicRooms.slice(0,150)}))}catch(_e){}
    renderPublicRooms();
- },err=>{console.error('public tournaments:',err);$('publicRooms').textContent='فهرست مسابقات قابل دریافت نیست؛ قوانین Firestore یا اتصال را بررسی کنید.';});
+ },err=>{
+   console.error('public tournaments:',err);publicRoomsError=true;
+   if(!publicRooms.length)renderPublicRooms();
+   else $('roomSyncWarning').textContent='ارتباط زنده برقرار نیست؛ فهرست ذخیره‌شده ممکن است قدیمی باشد.';
+ });
 }
 $('publicRooms').onclick=e=>{
  const button=e.target.closest('[data-public-room]');
  if(button)changeRoom(button.dataset.publicRoom);
 };
 $('showLogin').onclick=()=>{loginExpanded=!loginExpanded;managementButtons()};
+function switchAdminTab(tab,focus=false){
+ if(!canManage()||!['dashboard','tournaments','managers','settings'].includes(tab))return;
+ adminTab=tab;
+ for(const name of ['dashboard','tournaments','managers','settings']){
+  const button=$('adminTab'+name[0].toUpperCase()+name.slice(1));
+  const panel=$('adminView'+name[0].toUpperCase()+name.slice(1));
+  const selected=name===adminTab;
+  button.classList.toggle('active',selected);
+  button.setAttribute('aria-selected',String(selected));
+  button.tabIndex=selected?0:-1;
+  panel.classList.toggle('hidden',!selected);
+ }
+ if(focus){$('adminPanel').scrollIntoView({behavior:'smooth',block:'start'});}
+}
+function openNewTournament(){
+ if(!canManage()||saving)return;
+ if(roomId)changeRoom(null);
+ newTournamentMode=true;
+ display();
+ $('setup').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderAdminDashboard(){
+ if(!canManage())return;
+ const total=adminRoomsLoaded?rooms.length:null;
+ const complete=adminRoomsLoaded?rooms.filter(r=>r.champion!==null).length:null;
+ $('dashAll').textContent=total===null?'…':fa(total);
+ $('dashActive').textContent=total===null?'…':fa(total-complete);
+ $('dashFinished').textContent=total===null?'…':fa(complete);
+ $('dashRequests').textContent=fa(requests.length);
+ const badge=$('pendingRequestsBubble');
+ badge.classList.toggle('hidden',!requests.length);
+ badge.textContent=requests.length?fa(requests.length):'';
+ const sortedByUpdate=[...rooms].sort((a,b)=>b.updatedMillis-a.updatedMillis);
+ const next=sortedByUpdate.find(r=>r.nextLabel);
+ const latest=sortedByUpdate.find(r=>r.latest);
+ $('dashNextMatch').innerHTML=next?'<span class="admin-kicker">'+esc(next.title)+'</span><strong>'+esc(next.nextLabel)+'</strong><button data-dashboard-room="'+esc(next.id)+'" type="button">باز کردن جدول</button>':
+   '<p class="muted">'+(adminRoomsLoaded?'در حال حاضر بازی آماده‌ای وجود ندارد.':'در حال دریافت مسابقات...')+'</p>';
+ $('dashLastResult').innerHTML=latest?'<span class="admin-kicker">'+esc(latest.title)+'</span><strong>'+esc(latest.latest)+'</strong><button data-dashboard-room="'+esc(latest.id)+'" type="button">مشاهده نتیجه</button>':
+   '<p class="muted">'+(adminRoomsLoaded?'هنوز نتیجه‌ای در فهرست مسابقات ثبت نشده است.':'در حال دریافت نتایج...')+'</p>';
+ $('settingsEmail').textContent=user?.email||'حساب مدیر';
+}
 function renderManagement(){
  if(!canManage())return;
- $('roomList').innerHTML=rooms.length ? rooms.map(r=>'<div class="room-row"><div class="row-details"><strong>'+esc(r.title)+'</strong><small>'+fa(r.count)+' بازیکن · '+esc(r.id)+'</small></div><div class="room-actions"><button type="button" data-room="'+esc(r.id)+'">باز کردن</button><button type="button" class="action-danger" data-delete-room="'+esc(r.id)+'" '+(deletingRoomId===r.id?'disabled':'')+'>حذف مسابقه</button></div></div>').join(''):'<p class="muted">هنوز مسابقه‌ای ساخته نشده است.</p>';
+ const search=$('adminSearch').value.trim().toLowerCase();
+ const filtered=rooms.filter(r=>(adminFilter==='all'||(adminFilter==='finished'?r.champion!==null:r.champion===null))&&r.title.toLowerCase().includes(search));
+ $('adminRoomCount').textContent=adminRoomsLoaded?fa(filtered.length)+' مسابقه': 'در حال بارگذاری مسابقات...';
+ $('roomList').innerHTML=!adminRoomsLoaded?'<div class="room-loading"><span class="spinner" aria-hidden="true"></span>در حال بارگذاری مسابقات...</div>':
+ filtered.length ? filtered.map(r=>'<div class="room-row"><div class="row-details"><strong>'+esc(r.title)+'</strong><small>'+fa(r.count)+' بازیکن</small><span class="admin-status-tag '+(r.champion!==null?'finished':'')+'">'+(r.champion!==null?'🏆 پایان‌یافته · '+esc(r.champion):'🏓 در حال برگزاری')+'</span></div><div class="room-actions"><button type="button" data-room="'+esc(r.id)+'">مدیریت</button><button type="button" class="action-danger" data-delete-room="'+esc(r.id)+'" '+(deletingRoomId===r.id?'disabled':'')+'>حذف</button></div></div>').join(''):
+ '<p class="muted">'+(rooms.length?'مسابقه‌ای با این فیلتر پیدا نشد.':'هنوز مسابقه‌ای ایجاد نشده است.')+'</p>';
  $('requestsList').innerHTML=requests.length ? requests.map(x=>'<div class="request-row"><div class="row-details"><strong>'+esc(x.email)+'</strong><small>شناسه '+esc(x.uid)+'</small></div><button class="primary" data-approve="'+esc(x.uid)+'">تأیید</button><button data-deny="'+esc(x.uid)+'">رد</button></div>').join(''):'<p class="muted">درخواست جدیدی وجود ندارد.</p>';
  $('managersList').innerHTML='<div class="manager-row"><div class="row-details"><strong>مدیر ثابت (مالک)</strong><small>'+esc(ownerReady?ownerUid:'UID هنوز تنظیم نشده')+'</small></div><span id="managerBadge">محافظت‌شده</span></div>' +
  managers.filter(m=>m.uid!==ownerUid).map(m=>'<div class="manager-row"><div class="row-details"><strong>'+esc(m.email||m.uid)+'</strong><small>'+esc(m.uid)+'</small></div><button class="action-danger" data-revoke="'+esc(m.uid)+'">لغو مدیریت</button></div>').join('');
+ renderAdminDashboard();
 }
+$('adminPanel').addEventListener('click',event=>{
+ const tab=event.target.closest('[data-admin-tab]');
+ if(tab){switchAdminTab(tab.dataset.adminTab);return}
+ const filter=event.target.closest('[data-admin-filter]');
+ if(filter){
+  adminFilter=filter.dataset.adminFilter;
+  document.querySelectorAll('[data-admin-filter]').forEach(b=>{const on=b.dataset.adminFilter===adminFilter;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
+  renderManagement();return;
+ }
+ const room=event.target.closest('[data-dashboard-room]');
+ if(room)changeRoom(room.dataset.dashboardRoom);
+});
+$('adminSearch').addEventListener('input',renderManagement);
+$('adminQuickCreate').onclick=openNewTournament;
+$('dashSeeTournaments').onclick=()=>switchAdminTab('tournaments',true);
+$('dashSeeManagers').onclick=()=>switchAdminTab('managers',true);
+$('settingsGoToRooms').onclick=()=>switchAdminTab('tournaments',true);
+$('settingsImport').onclick=()=>{if(canManage()&&!saving){newTournamentMode=false;$('import').click()}};
+$('settingsInstall').onclick=()=>$('installAppMenu').click();
+$('settingsLogout').onclick=()=>$('logout').click();
+$('cancelNew').onclick=()=>{newTournamentMode=false;switchAdminTab('tournaments');display();$('adminPanel').scrollIntoView({behavior:'smooth',block:'start'})};
 function listenToRoom(){
  clearListener('room');receivedRemote=false;serverOnline=false;state=null;revision=0;display();
  if(!roomId){setStatus(canManage()?'مدیر وارد شده است · یک مسابقه بساز یا از فهرست باز کن':'حالت تماشاگر · مسابقات را از فهرست انتخاب کن.');return}
@@ -107,10 +214,68 @@ function listenToRoom(){
    else setStatus('نمایش اطلاعات موقت؛ اتصال به سرور تأیید نشده است.');
  },err=>{console.error('room subscription:',err);receivedRemote=false;serverOnline=false;display();setStatus('دسترسی به این مسابقه برقرار نشد.');});
 }
-function changeRoom(id){roomId=id;history.replaceState(null,'',roomUrl(roomId));listenToRoom();if(id)window.scrollTo({top:0,behavior:'smooth'});}
+// Browser history: detail -> list -> ask before exiting an installed PWA.
+const routeState=(view,extra={})=>({pingpongRouteV7:true,view,...extra});
+let exitWasApproved=false;
+function changeRoom(id,fromHistory=false){
+ roomId=id||null;newTournamentMode=false;
+ if(!fromHistory){
+  if(roomId)history.pushState(routeState('detail',{roomId}), '',roomUrl(roomId));
+  else history.replaceState(routeState('home'),'',roomUrl(null));
+ }
+ if(db)listenToRoom();else {state=null;display()}
+ window.scrollTo(0,0);
+}
+function setupNavigation(){
+ // A direct spectator ?room= link also gets a synthetic home route underneath it.
+ const existing=history.state;
+ if(!existing?.pingpongRouteV7){
+  const initialRoom=roomId;
+  history.replaceState(routeState('exit'),'',roomUrl(null));
+  history.pushState(routeState('home'),'',roomUrl(null));
+  if(initialRoom)history.pushState(routeState('detail',{roomId:initialRoom}),'',roomUrl(initialRoom));
+ }
+ window.addEventListener('popstate',event=>{
+  const stateFromHistory=event.state;
+  if(stateFromHistory?.pingpongRouteV7 && stateFromHistory.view==='detail'){
+   changeRoom(stateFromHistory.roomId,true);return;
+  }
+  if(stateFromHistory?.pingpongRouteV7 && stateFromHistory.view==='home'){
+   changeRoom(null,true);return;
+  }
+  if(stateFromHistory?.pingpongRouteV7 && stateFromHistory.view==='exit'){
+   if(exitWasApproved){history.back();return}
+   // Re-arm the exit guard before opening the confirmation dialog.
+   history.pushState(routeState('home'),'',roomUrl(null));
+   if(roomId)changeRoom(null,true);
+   $('exitModal').classList.remove('hidden');
+   $('stayInApp').focus();
+  }
+ });
+ $('returnToList').onclick=()=>{
+  if(history.state?.view==='detail')history.back();
+  else changeRoom(null);
+ };
+ $('returnFromMissing').onclick=()=>{
+  if(history.state?.view==='detail')history.back();
+  else changeRoom(null);
+ };
+ $('stayInApp').onclick=()=>{$('exitModal').classList.add('hidden')};
+ $('exitApp').onclick=()=>{
+  exitWasApproved=true;
+  $('exitModal').classList.add('hidden');
+  history.back();
+ };
+ window.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && !$('exitModal').classList.contains('hidden')){
+   event.preventDefault();$('stayInApp').click();
+  }
+ });
+}
+
 function listenToAdmin(){
  stopAdminListeners();if(!canManage())return;
- unsubRooms=onSnapshot(collection(db,'tournaments'),s=>{rooms=s.docs.map(d=>({id:d.id,title:d.data()?.state?.title||'مسابقه جدید',count:d.data()?.state?.players?.length||0}));renderManagement()},e=>{console.error(e);notify('فهرست مسابقات قابل خواندن نیست؛ قوانین Firestore را بررسی کن.')});
+ unsubRooms=onSnapshot(collection(db,'tournaments'),s=>{rooms=s.docs.map(publicRoomFromDoc).sort(byNewestCreated);adminRoomsLoaded=true;renderManagement()},e=>{console.error(e);notify('فهرست مسابقات قابل خواندن نیست؛ قوانین Firestore را بررسی کن.')});
  unsubManagers=onSnapshot(collection(db,'managers'),s=>{managers=s.docs.map(d=>({uid:d.id,email:d.data().email||''}));renderManagement()},e=>{console.error(e);notify('فهرست مدیران قابل خواندن نیست.')});
  unsubRequests=onSnapshot(collection(db,'managerRequests'),s=>{requests=s.docs.map(d=>({uid:d.id,email:d.data().email||''}));renderManagement()},e=>{console.error(e);notify('فهرست درخواست‌های مدیریت قابل خواندن نیست.')});
 }
@@ -245,9 +410,14 @@ async function correctWinner(key){
 
 function render(){
  let active=!!state;
- $('setup').classList.toggle('hidden',active||!canManage()||(roomId&&!receivedRemote));
+ $('setup').classList.toggle('hidden',!newTournamentMode||active||!canManage()||!!roomId);
  $('tournament').classList.toggle('hidden',!active);
- $('waiting').classList.toggle('hidden',active||canManage());
+ $('waiting').classList.toggle('hidden',!!roomId||active||canManage());
+ $('roomLoading').classList.toggle('hidden',!roomId||active);
+ if(roomId&&!active){
+  $('roomLoadingText').textContent=receivedRemote?
+   'این مسابقه موجود نیست یا دیگر در دسترس قرار ندارد.':'در حال دریافت جدول مسابقه...';
+ }
  $('managerToolbar').classList.toggle('hidden',!canManage());
  if(!active)return;
  let {all,losses,champion}=summary(state),done=all.filter(m=>m.done&&!m.bye).length;
@@ -282,11 +452,11 @@ $('board').onclick=async e=>{
  await saveOnline(next);
 };
 $('undo').onclick=async()=>{if(!state||!state.history.length)return;if(!confirm('آخرین نتیجه ثبت‌شده حذف شود؟'))return;const next=JSON.parse(JSON.stringify(state));delete next.results[next.history.pop()];await saveOnline(next)};
-$('reset').onclick=()=>{if(!canManage())return;changeRoom(null);notify('مسابقه قبلی حفظ شد؛ مسابقه جدید بساز.');};
-$('startNew').onclick=()=>{if(!canManage())return;changeRoom(null);$('setup').scrollIntoView({behavior:'smooth'});};
+$('reset').onclick=()=>{if(!canManage())return;openNewTournament();notify('مسابقه قبلی حفظ شد؛ مسابقه جدید بساز.');};
+$('startNew').onclick=openNewTournament;
 $('print').onclick=()=>window.print();
 $('export').onclick=()=>{if(!state)return;const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='PingPong_Double_Backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);notify('نسخه پشتیبان دانلود شد.')};
-$('import').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(!canManage())throw Error();if(f.size>100000)throw Error();const loaded=validate(JSON.parse(await f.text()));if(!confirm('این نسخه پشتیبان جایگزین جدول همین مسابقه شود؟'))return;if(roomId){if(await saveOnline(loaded))notify('مسابقه بازیابی شد.')}else await createTournament(loaded);}catch(err){notify('فایل معتبر نیست یا مجوز مدیریت نداری.')}finally{e.target.value=''}};
+$('import').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(!canManage())throw Error();if(f.size>100000)throw Error();const loaded=validate(JSON.parse(await f.text()));if(!confirm(roomId?'این نسخه پشتیبان جایگزین جدول همین مسابقه شود؟':'از این فایل پشتیبان یک مسابقه جدید ساخته شود؟'))return;if(roomId){if(await saveOnline(loaded))notify('مسابقه بازیابی شد.')}else await createTournament(loaded);}catch(err){notify('فایل معتبر نیست یا مجوز مدیریت نداری.')}finally{e.target.value=''}};
 $('share').onclick=async()=>{if(!canManage()||!roomId)return;const url=shareUrl();try{await navigator.clipboard.writeText(url);notify('لینک تماشاگران کپی شد.')}catch(_e){window.prompt('لینک تماشاگران:',url)}};
 // Only a signed-in manager can delete an individual tournament; Firestore rules also enforce this.
 // Never delete from the spectator view or delete a manager account here.
@@ -377,6 +547,7 @@ $('register').onclick=async()=>{
 };
 $('logout').onclick=async()=>{if(confirm('از حساب خارج شوی؟'))await signOut(auth)};
 $('password').addEventListener('keydown',e=>{if(e.key==='Enter')$('login').click()});
+setupNavigation();
 if(!configured){setStatus('تنظیمات Firebase کامل نیست.');$('managerLogin').classList.add('hidden')}
 else try{
  const app=initializeApp(firebaseConfig,'pingpong-cup');auth=getAuth(app);db=getFirestore(app);listenPublicRooms();
